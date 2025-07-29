@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
 import { isValidEmail } from '@/utils/helpers';
 import { Eye, EyeOff, Loader2, Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';

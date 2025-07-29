@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
 import { useSessionStore } from '@/store/sessionStore';
 import { useProjectStore } from '@/store/projectStore';
 import { formatDate } from '@/utils/helpers';

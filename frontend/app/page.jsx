@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
+
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
