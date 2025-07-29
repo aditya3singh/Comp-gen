@@ -1,0 +1,47 @@
+{
+  "name": "ai-component-generator",
+  "version": "1.0.0",
+  "description": "AI-driven component generator platform with real-time preview and persistent sessions",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm install",
+    "start": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm start",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "setup": "npm run install:all",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "cd frontend && npm run lint",
+    "clean": "rm -rf frontend/.next backend/node_modules frontend/node_modules node_modules",
+    "deploy:frontend": "cd frontend && npm run build && vercel --prod",
+    "deploy:backend": "cd backend && railway up"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ai-component-generator.git"
+  },
+  "keywords": [
+    "ai",
+    "react", 
+    "component-generator",
+    "nextjs",
+    "express",
+    "mongodb",
+    "openrouter",
+    "llama",
+    "micro-frontend",
+    "code-generation"
+  ],
+  "author": "AI Component Generator Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
