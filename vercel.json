@@ -14,7 +14,6 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production",
-    "NEXT_PUBLIC_API_URL": "https://comp-gen-alpha.vercel.app/api"
+    "NODE_ENV": "production"
   }
 }

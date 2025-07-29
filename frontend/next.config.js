@@ -2,12 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'standalone',
+  output: 'export',
+  trailingSlash: true,
+  skipTrailingSlashRedirect: true,
+  distDir: 'out',
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api',
   },
   images: {
-    domains: ['localhost', 'comp-gen-alpha.vercel.app'],
+    domains: ['localhost'],
     unoptimized: true,
   },
   webpack: (config, { isServer }) => {
@@ -21,7 +24,8 @@ const nextConfig = {
     
     return config;
   },
-  // Disable static optimization for pages with client-side features
+  
+  // Disable static optimization completely
   experimental: {
     esmExternals: 'loose',
   },
@@ -31,9 +35,6 @@ const nextConfig = {
   
   // Optimize for production
   compress: true,
-  
-  // Handle trailing slashes
-  trailingSlash: false,
   
   // Skip build errors for deployment
   typescript: {
