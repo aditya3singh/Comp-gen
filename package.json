@@ -1,8 +1,12 @@
 {
-  "name": "ai-component-generator",
+  "name": "comp-gen",
   "version": "1.0.0",
   "description": "Production-ready AI-powered React component builder platform",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aditya3singh/Comp-gen.git"
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
@@ -25,7 +29,7 @@
     "mongodb",
     "nodejs"
   ],
-  "author": "Your Name",
+  "author": "Aditya Singh",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
