@@ -1,227 +1,142 @@
-# 🚀 Deployment Guide - AI Component Generator Platform
+# 🚀 Deployment Guide - AI Component Generator
 
-## 📋 Prerequisites
+## Vercel Deployment
 
-- Node.js 18+ and npm
-- MongoDB Atlas account (or local MongoDB)
-- OpenRouter API key (optional - has fallback)
-- Vercel account (for frontend)
-- Railway/Render account (for backend)
+### Prerequisites
+1. GitHub repository with your code
+2. Vercel account connected to GitHub
+3. MongoDB Atlas database (for production)
 
-## 🔧 Environment Configuration
+### Environment Variables
+Set these in your Vercel dashboard:
 
-### Backend Environment Variables (.env)
-```bash
+#### Backend Environment Variables:
+```
 MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/componentgen
-JWT_SECRET=your-super-secure-jwt-secret-here
-PORT=5001
-
-# AI Configuration
-OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
+JWT_SECRET=your-super-secret-jwt-key-here
+NODE_ENV=production
+FRONTEND_URL=https://your-domain.vercel.app
+OPENROUTER_API_KEY=your-openrouter-api-key
 AI_MODEL=meta-llama/llama-3.1-8b-instruct:free
-ENABLE_AI_FALLBACK=true
-
-# CORS Configuration
-FRONTEND_URL=https://your-frontend-domain.vercel.app
-NODE_ENV=production
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 ```
 
-### Frontend Environment Variables (.env.local)
-```bash
-NEXT_PUBLIC_API_URL=https://your-backend-domain.railway.app/api
-NODE_ENV=production
+#### Frontend Environment Variables:
+```
+NEXT_PUBLIC_API_URL=https://your-domain.vercel.app/api
 ```
 
-## 🌐 Deployment Steps
+### Deployment Steps
 
-### 1. Database Setup (MongoDB Atlas)
-
-1. Create a MongoDB Atlas account
-2. Create a new cluster
-3. Create a database user
-4. Get the connection string
-5. Update `MONGO_URI` in backend environment
-
-### 2. Backend Deployment (Railway)
-
-1. **Connect Repository**
+1. **Push to GitHub:**
    ```bash
-   # Install Railway CLI
-   npm install -g @railway/cli
-   
-   # Login and initialize
-   railway login
-   railway init
+   git add .
+   git commit -m "Deploy to Vercel"
+   git push origin main
    ```
 
-2. **Configure Environment Variables**
-   - Go to Railway dashboard
-   - Add all backend environment variables
-   - Ensure `PORT` is set to Railway's provided port
+2. **Connect to Vercel:**
+   - Go to [vercel.com](https://vercel.com)
+   - Import your GitHub repository
+   - Select "Other" framework preset
+   - Set root directory to `/` (leave empty)
 
-3. **Deploy**
-   ```bash
-   railway up
-   ```
+3. **Configure Build Settings:**
+   - Build Command: `npm run vercel-build`
+   - Output Directory: `frontend/.next`
+   - Install Command: `npm run install:all`
 
-### 3. Frontend Deployment (Vercel)
+4. **Add Environment Variables:**
+   - Go to Project Settings → Environment Variables
+   - Add all the variables listed above
 
-1. **Connect Repository**
-   ```bash
-   # Install Vercel CLI
-   npm install -g vercel
-   
-   # Deploy from frontend directory
-   cd frontend
-   vercel --prod
-   ```
+5. **Deploy:**
+   - Click "Deploy"
+   - Wait for build to complete
 
-2. **Configure Environment Variables**
-   - Go to Vercel dashboard
-   - Add `NEXT_PUBLIC_API_URL` pointing to your Railway backend
-   - Redeploy if needed
+### Database Setup (MongoDB Atlas)
 
-### 4. Domain Configuration
+1. **Create MongoDB Atlas Account:**
+   - Go to [mongodb.com/atlas](https://mongodb.com/atlas)
+   - Create free cluster
 
-1. **Backend Domain**
-   - Railway provides: `https://your-app.railway.app`
-   - Update `NEXT_PUBLIC_API_URL` in Vercel
+2. **Configure Database:**
+   - Create database user
+   - Whitelist IP addresses (0.0.0.0/0 for Vercel)
+   - Get connection string
 
-2. **Frontend Domain**
-   - Vercel provides: `https://your-app.vercel.app`
-   - Update `FRONTEND_URL` in Railway
+3. **Update Environment Variables:**
+   - Replace `MONGO_URI` with your Atlas connection string
 
-## 🧪 Testing Deployment
+### Custom Domain (Optional)
 
-### Health Check Endpoints
+1. **Add Domain in Vercel:**
+   - Go to Project Settings → Domains
+   - Add your custom domain
+
+2. **Update Environment Variables:**
+   - Update `FRONTEND_URL` to your custom domain
+   - Update `NEXT_PUBLIC_API_URL` to your custom domain + `/api`
+
+### Troubleshooting
+
+#### Common Issues:
+
+1. **Build Fails:**
+   - Check build logs in Vercel dashboard
+   - Ensure all dependencies are in package.json
+   - Verify environment variables are set
+
+2. **API Routes Not Working:**
+   - Check function logs in Vercel dashboard
+   - Verify backend environment variables
+   - Check MongoDB connection
+
+3. **Frontend Not Loading:**
+   - Check browser console for errors
+   - Verify `NEXT_PUBLIC_API_URL` is correct
+   - Check network tab for failed requests
+
+#### Debug Commands:
 ```bash
-# Backend health check
-curl https://your-backend.railway.app/api/health
+# Check build locally
+npm run build
 
-# Frontend accessibility
-curl https://your-frontend.vercel.app
+# Test API locally
+npm run dev:backend
+
+# Test frontend locally
+npm run dev:frontend
 ```
 
-### Feature Testing Checklist
-- [ ] User registration and login
-- [ ] Session creation and management
-- [ ] AI component generation (with fallback)
-- [ ] Component preview and editing
-- [ ] Interactive property editor
-- [ ] Code export functionality
-- [ ] Session persistence across logins
+### Performance Optimization
 
-## 🔍 Monitoring & Debugging
+1. **Enable Edge Functions:**
+   - Add `export const config = { runtime: 'edge' }` to API routes
 
-### Backend Logs
-```bash
-# Railway logs
-railway logs
+2. **Optimize Images:**
+   - Use Next.js Image component
+   - Configure image domains in next.config.js
 
-# Check specific service
-railway logs --service backend
-```
+3. **Enable Caching:**
+   - Add cache headers to API responses
+   - Use Vercel's edge caching
 
-### Frontend Logs
-```bash
-# Vercel logs
-vercel logs
+### Monitoring
 
-# Real-time logs
-vercel logs --follow
-```
+1. **Vercel Analytics:**
+   - Enable in project settings
+   - Monitor performance and usage
 
-### Common Issues & Solutions
+2. **Error Tracking:**
+   - Add Sentry or similar service
+   - Monitor API errors and frontend crashes
 
-1. **CORS Errors**
-   - Ensure `FRONTEND_URL` is correctly set in backend
-   - Check Vercel domain matches the CORS configuration
+3. **Database Monitoring:**
+   - Use MongoDB Atlas monitoring
+   - Set up alerts for performance issues
 
-2. **Database Connection**
-   - Verify MongoDB Atlas IP whitelist (0.0.0.0/0 for Railway)
-   - Check connection string format
+## 🎉 Your AI Component Generator is now live!
 
-3. **API Key Issues**
-   - Verify OpenRouter API key is valid
-   - Fallback mode should work without API key
-
-4. **Build Failures**
-   - Check Node.js version compatibility
-   - Verify all dependencies are installed
-
-## 📊 Performance Optimization
-
-### Backend Optimizations
-- Enable gzip compression
-- Implement Redis caching (optional)
-- Database connection pooling
-- API response caching
-
-### Frontend Optimizations
-- Next.js automatic optimizations
-- Image optimization
-- Bundle analysis and splitting
-- CDN delivery via Vercel
-
-## 🔒 Security Checklist
-
-- [ ] Environment variables secured
-- [ ] JWT secrets are strong and unique
-- [ ] Database access restricted
-- [ ] HTTPS enabled on all endpoints
-- [ ] CORS properly configured
-- [ ] Input validation implemented
-- [ ] Rate limiting active
-
-## 📈 Scaling Considerations
-
-### Horizontal Scaling
-- Railway auto-scaling for backend
-- Vercel edge functions for frontend
-- MongoDB Atlas auto-scaling
-
-### Performance Monitoring
-- Railway metrics dashboard
-- Vercel analytics
-- MongoDB Atlas monitoring
-
-## 🚀 Go Live Checklist
-
-- [ ] All environment variables configured
-- [ ] Database connected and accessible
-- [ ] Backend deployed and health check passing
-- [ ] Frontend deployed and accessible
-- [ ] CORS configured correctly
-- [ ] AI integration working (with fallback)
-- [ ] All features tested in production
-- [ ] Monitoring and logging configured
-- [ ] Domain names configured (if custom)
-- [ ] SSL certificates active
-
-## 📞 Support & Troubleshooting
-
-### Useful Commands
-```bash
-# Check backend status
-curl https://your-backend.railway.app/api/health
-
-# Test authentication
-curl -X POST https://your-backend.railway.app/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123","name":"Test User"}'
-
-# Test AI generation (with token)
-curl -X POST https://your-backend.railway.app/api/ai/generate \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"Create a blue button","sessionId":"SESSION_ID"}'
-```
-
-### Platform-Specific Documentation
-- [Railway Deployment Guide](https://docs.railway.app/)
-- [Vercel Deployment Guide](https://vercel.com/docs)
-- [MongoDB Atlas Setup](https://docs.atlas.mongodb.com/)
-
----
-
-**🎉 Your AI Component Generator Platform is now live and ready for evaluation!**
+Visit your deployed application and start building amazing React components with AI assistance.

@@ -24,7 +24,10 @@
     "file-saver": "^2.0.5",
     "react-color": "^2.19.3",
     "monaco-editor": "^0.44.0",
-    "@monaco-editor/react": "^4.6.0"
+    "@monaco-editor/react": "^4.6.0",
+    "mongoose": "^8.0.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "eslint": "^8.56.0",

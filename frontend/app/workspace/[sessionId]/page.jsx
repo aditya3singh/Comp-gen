@@ -5,6 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useSessionStore } from '@/store/sessionStore';
 import { useAIStore } from '@/store/aiStore';
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic';
 import ChatPanel from '@/components/workspace/ChatPanel';
 import ComponentPreview from '@/components/workspace/ComponentPreview';
 import CodeEditor from '@/components/workspace/CodeEditor';
