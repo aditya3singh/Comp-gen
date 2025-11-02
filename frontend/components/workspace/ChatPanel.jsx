@@ -69,34 +69,61 @@ export default function ChatPanel({ sessionId }) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-        <div className="flex items-center space-x-2 mb-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-            <Bot className="h-4 w-4 text-white" />
+      <div className="p-6 border-b-2 border-black bg-white">
+        <div className="flex items-center space-x-3 mb-3">
+          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
+            <Bot className="h-5 w-5 text-white" />
           </div>
-          <h3 className="font-bold text-gray-900">AI Assistant</h3>
+          <div>
+            <h3 className="font-bold text-black text-lg">AI Assistant</h3>
+            <p className="text-sm text-gray-600">
+              Powered by AI • Fast & Reliable
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-gray-600">
-          Describe the component you want to create
-        </p>
+        <div className="bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
+          <p className="text-sm text-gray-700 font-medium">
+            💡 Describe the component you want to create
+          </p>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
         {chatMessages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8 px-4">
-            <div className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl p-8 mb-6">
-              <Bot className="h-16 w-16 mx-auto mb-4 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Welcome to AI Component Generator!</h3>
-              <p className="text-sm text-gray-600 mb-4">Start by describing a React component you'd like to create.</p>
-              <div className="bg-white rounded-lg p-3 text-left">
-                <p className="text-xs font-medium text-gray-700 mb-1">Example prompts:</p>
-                <ul className="text-xs text-gray-600 space-y-1">
-                  <li>• "Create a login form with email and password"</li>
-                  <li>• "Build a product card with image and price"</li>
-                  <li>• "Make a navigation bar with menu items"</li>
+          <div className="text-center mt-8">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 shadow-lg">
+              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <Bot className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-black mb-3">Ready to Create!</h3>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                Start by describing a React component you'd like to create. I'll generate it instantly with modern styling.
+              </p>
+              <div className="bg-gray-50 rounded-xl p-4 text-left border-2 border-gray-200">
+                <p className="text-sm font-bold text-black mb-3 flex items-center">
+                  <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
+                  Example prompts:
+                </p>
+                <ul className="text-sm text-gray-700 space-y-2">
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
+                    "Create a modern login form with email and password"
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
+                    "Build a product card with image, title, and price"
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
+                    "Make a responsive navigation bar with menu items"
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-red-600 mr-2">•</span>
+                    "Design a dashboard with charts and statistics"
+                  </li>
                 </ul>
               </div>
             </div>
@@ -105,38 +132,42 @@ export default function ChatPanel({ sessionId }) {
           chatMessages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                className={`max-w-[85%] rounded-2xl px-5 py-4 shadow-lg transition-all hover:shadow-xl ${
                   message.role === 'user'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
-                    : 'bg-white border border-gray-200 text-gray-900'
+                    ? 'bg-red-600 text-white border-2 border-red-600'
+                    : 'bg-white border-2 border-gray-200 text-black hover:border-gray-300'
                 }`}
               >
                 <div className="flex items-start space-x-3">
                   {message.role === 'assistant' && (
-                    <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Bot className="h-3 w-3 text-white" />
+                    <div className="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
+                      <Bot className="h-4 w-4 text-white" />
                     </div>
                   )}
                   {message.role === 'user' && (
-                    <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <User className="h-3 w-3 text-white" />
+                    <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <User className="h-4 w-4 text-white" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className={`text-xs ${
-                        message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words font-medium">{message.content}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <p className={`text-xs font-medium ${
+                        message.role === 'user' ? 'text-red-100' : 'text-gray-500'
                       }`}>
                         {formatTime(message.timestamp)}
                       </p>
                       {message.metadata && (
-                        <p className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                        <div className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          message.role === 'user' 
+                            ? 'text-red-100 bg-white/10' 
+                            : 'text-gray-600 bg-gray-100'
+                        }`}>
                           {message.metadata.model?.split('/')[1] || 'AI'} • {message.metadata.processingTime}ms
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -148,19 +179,29 @@ export default function ChatPanel({ sessionId }) {
         
         {isGenerating && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg px-3 py-2">
-              <div className="flex items-center space-x-2">
-                <Bot className="h-4 w-4" />
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-gray-600">Generating component...</span>
+            <div className="bg-white border-2 border-gray-200 rounded-2xl px-5 py-4 shadow-lg">
+              <div className="flex items-center space-x-3">
+                <div className="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <Loader2 className="h-5 w-5 animate-spin text-red-600" />
+                <span className="text-sm text-black font-medium">Generating your component...</span>
               </div>
             </div>
           </div>
         )}
         
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="bg-white border-2 border-red-600 rounded-2xl p-5 shadow-lg">
+            <div className="flex items-start space-x-3">
+              <div className="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">!</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-black mb-1">Generation Error</p>
+                <p className="text-sm text-gray-600">{error}</p>
+              </div>
+            </div>
           </div>
         )}
         
@@ -168,25 +209,25 @@ export default function ChatPanel({ sessionId }) {
       </div>
 
       {/* Input Form */}
-      <div className="p-4 border-t bg-gray-50/50">
+      <div className="p-6 border-t-2 border-black bg-white">
         {imageFile && (
-          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+          <div className="mb-4 p-4 bg-gray-50 border-2 border-gray-200 rounded-xl flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Image className="h-4 w-4 text-blue-600" />
+              <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                <Image className="h-5 w-5 text-white" />
               </div>
-              <span className="text-sm font-medium text-blue-800">{imageFile.name}</span>
+              <span className="text-sm font-bold text-black">{imageFile.name}</span>
             </div>
             <button
               onClick={removeImage}
-              className="text-blue-400 hover:text-blue-600 w-6 h-6 flex items-center justify-center rounded-full hover:bg-blue-100 transition-colors"
+              className="text-gray-400 hover:text-red-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-all font-bold text-lg"
             >
               ×
             </button>
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-end space-x-3">
             <input
               type="file"
@@ -198,7 +239,7 @@ export default function ChatPanel({ sessionId }) {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 border border-gray-200 hover:border-blue-300"
+              className="p-3 text-gray-600 hover:text-black hover:bg-gray-100 rounded-xl transition-all duration-200 border-2 border-gray-200 hover:border-gray-300"
               title="Upload image"
             >
               <Image className="h-5 w-5" />
@@ -213,12 +254,8 @@ export default function ChatPanel({ sessionId }) {
                     ? "Describe how to modify the component..."
                     : "Describe the component you want to create..."
                 }
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-900 bg-white transition-all duration-200 placeholder-gray-500"
+                className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none text-black bg-white transition-all duration-200 placeholder-gray-500 font-medium"
                 rows={3}
-                style={{
-                  color: '#111827',
-                  backgroundColor: '#ffffff'
-                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -226,15 +263,15 @@ export default function ChatPanel({ sessionId }) {
                   }
                 }}
               />
-              <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-                Press Enter to send, Shift+Enter for new line
+              <div className="absolute bottom-3 right-3 text-xs text-gray-400 font-medium">
+                Enter to send • Shift+Enter for new line
               </div>
             </div>
             
             <button
               type="submit"
               disabled={!input.trim() || isGenerating}
-              className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center min-w-[48px]"
+              className="p-4 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:transform-none flex items-center justify-center min-w-[56px]"
             >
               {isGenerating ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

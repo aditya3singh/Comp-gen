@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -11,6 +12,9 @@ const aiRoutes = require('./routes/ai');
 const exportRoutes = require('./routes/export');
 
 const app = express();
+
+// Performance middleware
+app.use(compression()); // Enable gzip compression
 
 // Security middleware
 app.use(helmet());
@@ -32,9 +36,14 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Database connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/componentgen')
-.then(() => console.log('✅ Connected to MongoDB'))
+// Database connection with optimized settings
+mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/componentgen', {
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  bufferCommands: false, // Disable mongoose buffering
+})
+.then(() => console.log('✅ Connected to MongoDB with optimized settings'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Routes

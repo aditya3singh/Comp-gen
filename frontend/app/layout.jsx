@@ -2,6 +2,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { FastAuthProvider } from '@/components/providers/FastAuthProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,8 +16,21 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
-          <Toaster position="top-right" />
+          <FastAuthProvider>
+            {children}
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#fff',
+                  color: '#333',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                },
+              }}
+            />
+          </FastAuthProvider>
         </AuthProvider>
       </body>
     </html>

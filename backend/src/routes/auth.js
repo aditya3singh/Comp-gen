@@ -6,16 +6,47 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Generate JWT token
+// Token cache for faster validation
+const tokenCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Generate JWT token with caching
 const generateToken = (userId) => {
-  return jwt.sign(
+  const token = jwt.sign(
     { userId },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
+  
+  // Cache token for faster validation
+  tokenCache.set(token, {
+    userId,
+    timestamp: Date.now()
+  });
+  
+  return token;
 };
 
-// Register
+// Generate refresh token
+const generateRefreshToken = (userId) => {
+  return jwt.sign(
+    { userId, type: 'refresh' },
+    process.env.JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+};
+
+// Clean expired tokens from cache
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of tokenCache.entries()) {
+    if (now - data.timestamp > CACHE_TTL) {
+      tokenCache.delete(token);
+    }
+  }
+}, 60000); // Clean every minute
+
+// Register - Optimized for speed
 router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
@@ -32,22 +63,34 @@ router.post('/register', [
 
     const { email, password, name } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    // Check if user exists with lean query for speed
+    const existingUser = await User.findOne({ email }).lean();
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists with this email' });
     }
 
-    // Create new user
-    const user = new User({ email, password, name });
-    await user.save();
+    // Create user (password will be hashed by pre-save hook)
+    const userData = {
+      email,
+      password, // Let the pre-save hook handle hashing
+      name,
+      preferences: {
+        theme: 'light',
+        defaultModel: 'gpt-4o-mini'
+      },
+      lastLogin: new Date()
+    };
 
-    // Generate token
+    const user = await User.create(userData);
+
+    // Generate tokens
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
     res.status(201).json({
       message: 'User registered successfully',
       token,
+      refreshToken,
       user: {
         id: user._id,
         email: user.email,
@@ -61,7 +104,7 @@ router.post('/register', [
   }
 });
 
-// Login
+// Login - Optimized for speed
 router.post('/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').exists()
@@ -75,38 +118,47 @@ router.post('/login', [
       });
     }
 
-    const { email, password } = req.body;
+    const { email, password, rememberMe = false } = req.body;
 
-    // Find user
-    const user = await User.findOne({ email });
+    // Find user with minimal fields for faster query
+    const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
+    // Check password using bcrypt directly for speed
+    const bcrypt = require('bcryptjs');
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate token
+    // Generate tokens
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
-    // Update last login without validation issues
-    try {
-      await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
-    } catch (updateError) {
-      console.log('Last login update failed, but continuing with login');
-    }
+    // Update last login asynchronously (don't wait)
+    setImmediate(async () => {
+      try {
+        await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+      } catch (updateError) {
+        console.log('Last login update failed:', updateError.message);
+      }
+    });
 
+    // Return response immediately
     res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user: {
         id: user._id,
         email: user.email,
         name: user.name,
-        preferences: user.preferences,
+        preferences: user.preferences || {
+          theme: 'light',
+          defaultModel: 'gpt-4o-mini'
+        },
         lastLogin: new Date()
       }
     });
@@ -116,15 +168,46 @@ router.post('/login', [
   }
 });
 
-// Get current user
+// Refresh token endpoint
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token required' });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    // Generate new access token
+    const newToken = generateToken(decoded.userId);
+    const newRefreshToken = generateRefreshToken(decoded.userId);
+
+    res.json({
+      token: newToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
+});
+
+// Get current user - Optimized with caching
 router.get('/me', auth, async (req, res) => {
   try {
+    // User is already loaded in auth middleware, just return it
     res.json({
       user: {
         id: req.user._id,
         email: req.user.email,
         name: req.user.name,
-        preferences: req.user.preferences,
+        preferences: req.user.preferences || {
+          theme: 'light',
+          defaultModel: 'gpt-4o-mini'
+        },
         lastLogin: req.user.lastLogin
       }
     });

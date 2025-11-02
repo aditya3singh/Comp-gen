@@ -101,59 +101,67 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="h-screen flex flex-col gradient-subtle">
-      {/* Header */}
-      <header className="glass border-b border-neutral-200/60 px-4 py-3">
+    <div className="h-screen flex flex-col bg-white">
+      {/* Enhanced Header */}
+      <header className="bg-white border-b-2 border-black px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Button
+          <div className="flex items-center space-x-4">
+            <button
               onClick={() => router.push('/dashboard')}
-              variant="ghost"
-              size="sm"
-              className="mr-3"
+              className="p-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition-all"
             >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold text-neutral-900">
-                {currentSession.title}
-              </h1>
-              {currentSession.description && (
-                <p className="text-sm text-neutral-500 line-clamp-1">
-                  {currentSession.description}
-                </p>
-              )}
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">⚡</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-black">
+                  {currentSession.title}
+                </h1>
+                {currentSession.description && (
+                  <p className="text-sm text-gray-600 line-clamp-1">
+                    {currentSession.description}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Button
+          <div className="flex items-center space-x-3">
+            <button
               onClick={handleSave}
               disabled={isSaving}
-              variant="secondary"
-              size="sm"
-              loading={isSaving}
+              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                isSaving 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-black'
+              }`}
             >
-              <Save className="h-4 w-4 mr-1" />
-              Save
-            </Button>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
             
-            <Button
+            <button
               onClick={handleCopyCode}
-              variant="secondary"
-              size="sm"
+              className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-black rounded-lg font-medium transition-all"
             >
-              <Copy className="h-4 w-4 mr-1" />
+              <Copy className="h-4 w-4 mr-2" />
               Copy
-            </Button>
+            </button>
             
-            <Button
+            <button
               onClick={handleDownload}
-              size="sm"
+              className="flex items-center px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-medium transition-all shadow-lg"
             >
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="h-4 w-4 mr-2" />
               Export
-            </Button>
+            </button>
           </div>
         </div>
       </header>
@@ -161,14 +169,14 @@ export default function WorkspacePage() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Chat Panel */}
-        <div className="w-80 card rounded-none border-r border-neutral-200/60 flex flex-col min-w-0 max-w-80">
+        <div className="w-80 bg-white border-r-2 border-black flex flex-col min-w-0 max-w-80">
           <ChatPanel sessionId={sessionId} />
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Component Preview */}
-          <div className="flex-1 card rounded-none border-0 min-h-0">
+          <div className="flex-1 min-h-0">
             <ComponentPreview 
               key={`preview-${currentComponent.jsx?.length || 0}-${Date.now()}`}
               jsx={currentComponent.jsx}
@@ -180,32 +188,41 @@ export default function WorkspacePage() {
             />
           </div>
 
-          {/* Code Editor Tabs */}
-          <div className="h-80 card rounded-none border-t border-neutral-200/60 flex flex-col">
-            <div className="flex border-b border-neutral-200/60 bg-neutral-50/50">
+          {/* Code Editor Section */}
+          <div className="h-80 bg-white border-t-2 border-black flex flex-col">
+            <div className="flex border-b-2 border-black bg-gray-50">
               <button
                 onClick={() => setActiveTab('jsx')}
-                className={`px-6 py-3 text-sm font-semibold transition-all duration-200 ${
+                className={`px-6 py-3 text-sm font-bold transition-all duration-200 ${
                   activeTab === 'jsx'
-                    ? 'text-primary-600 border-b-2 border-primary-600 bg-white'
-                    : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100/50'
+                    ? 'text-white bg-red-600 border-b-2 border-red-600'
+                    : 'text-gray-600 hover:text-black hover:bg-white'
                 }`}
               >
                 JSX Component
               </button>
               <button
                 onClick={() => setActiveTab('css')}
-                className={`px-6 py-3 text-sm font-semibold transition-all duration-200 ${
+                className={`px-6 py-3 text-sm font-bold transition-all duration-200 ${
                   activeTab === 'css'
-                    ? 'text-primary-600 border-b-2 border-primary-600 bg-white'
-                    : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100/50'
+                    ? 'text-white bg-red-600 border-b-2 border-red-600'
+                    : 'text-gray-600 hover:text-black hover:bg-white'
                 }`}
               >
                 CSS Styles
               </button>
-              <div className="flex-1 bg-neutral-50/50"></div>
-              <div className="flex items-center px-4 text-xs text-neutral-500">
-                {currentComponent.jsx ? `${currentComponent.jsx.split('\n').length} lines` : 'No code generated'}
+              <div className="flex-1 bg-gray-50"></div>
+              <div className="flex items-center px-6 text-sm font-medium">
+                <span className={`px-3 py-1 rounded-full text-xs ${
+                  currentComponent.jsx 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {currentComponent.jsx 
+                    ? `${currentComponent.jsx.split('\n').length} lines` 
+                    : 'No code generated'
+                  }
+                </span>
               </div>
             </div>
             

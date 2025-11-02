@@ -5,7 +5,6 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
     lowercase: true,
     trim: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
@@ -44,12 +43,13 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
+// Hash password before saving - Optimized
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
   try {
-    const salt = await bcrypt.genSalt(12);
+    // Reduced salt rounds for faster hashing (10 instead of 12)
+    const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
@@ -68,5 +68,9 @@ userSchema.methods.toJSON = function() {
   delete user.password;
   return user;
 };
+
+// Add indexes for faster queries
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ lastLogin: -1 });
 
 module.exports = mongoose.model('User', userSchema);

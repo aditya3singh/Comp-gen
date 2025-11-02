@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authAPI } from '@/utils/api';
+import { authPerf } from '@/utils/performance';
 import toast from 'react-hot-toast';
 
 const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 hours
@@ -111,9 +112,19 @@ export const useAuthStore = create()(
       },
 
       login: async (email, password, rememberMe = false) => {
+        authPerf.trackLogin();
         set({ isLoading: true });
         try {
-          const response = await authAPI.login(email, password, rememberMe);
+          // Start login request
+          const loginPromise = authAPI.login(email, password, rememberMe);
+          
+          // Pre-warm the UI state optimistically
+          const optimisticUpdate = setTimeout(() => {
+            set({ isLoading: false });
+          }, 100);
+          
+          const response = await loginPromise;
+          clearTimeout(optimisticUpdate);
           
           if (response.token && response.user) {
             const tokenData = {
@@ -122,12 +133,11 @@ export const useAuthStore = create()(
               expiresAt: Date.now() + SESSION_TIMEOUT
             };
             
-            if (rememberMe) {
-              localStorage.setItem('authTokens', JSON.stringify(tokenData));
-            } else {
-              sessionStorage.setItem('authTokens', JSON.stringify(tokenData));
-            }
+            // Store tokens immediately
+            const storage = rememberMe ? localStorage : sessionStorage;
+            storage.setItem('authTokens', JSON.stringify(tokenData));
             
+            // Update state in one batch
             set({
               user: response.user,
               token: response.token,
@@ -143,11 +153,23 @@ export const useAuthStore = create()(
               }
             });
             
-            get().startActivityTracking();
-            toast.success(`Welcome back, ${response.user.name}!`, {
-              icon: '👋',
-              duration: 4000,
-            });
+            // Start activity tracking asynchronously
+            setTimeout(() => get().startActivityTracking(), 0);
+            
+            // Show success toast asynchronously
+            setTimeout(() => {
+              const loginTime = authPerf.trackLoginComplete();
+              toast.success(`Welcome back, ${response.user.name}!`, {
+                icon: '👋',
+                duration: 3000,
+              });
+              
+              // Log performance in development
+              if (process.env.NODE_ENV === 'development' && loginTime) {
+                console.log(`🚀 Login completed in ${loginTime.toFixed(2)}ms`);
+              }
+            }, 0);
+            
             return true;
           }
           
@@ -268,6 +290,7 @@ export const useAuthStore = create()(
       },
 
       checkAuth: async () => {
+        // Fast path: check tokens first
         const localTokens = localStorage.getItem('authTokens');
         const sessionTokens = sessionStorage.getItem('authTokens');
         const tokenData = localTokens ? JSON.parse(localTokens) : 
@@ -278,26 +301,52 @@ export const useAuthStore = create()(
           return;
         }
 
-        // Check if token is expired
-        if (Date.now() > tokenData.expiresAt) {
-          const refreshed = await get().refreshAuthToken();
-          if (!refreshed) {
-            set({ isAuthenticated: false, isLoading: false });
-            return;
-          }
+        // Optimistic auth - assume valid if not expired
+        const isExpired = Date.now() > tokenData.expiresAt;
+        
+        if (!isExpired) {
+          // Set authenticated immediately for faster UX
+          set({
+            token: tokenData.token,
+            refreshToken: tokenData.refreshToken,
+            isAuthenticated: true,
+            isLoading: false,
+            rememberMe: !!localTokens,
+            lastActivity: Date.now()
+          });
+          
+          // Verify user in background
+          setTimeout(async () => {
+            try {
+              const response = await authAPI.getMe();
+              if (response.user) {
+                set({ user: response.user });
+                get().startActivityTracking();
+              }
+            } catch (error) {
+              // If verification fails, logout
+              get().logout();
+            }
+          }, 0);
+          
+          return;
         }
 
-        set({ isLoading: true });
+        // Token expired, try refresh
+        const refreshed = await get().refreshAuthToken();
+        if (!refreshed) {
+          set({ isAuthenticated: false, isLoading: false });
+          return;
+        }
+
+        // Verify refreshed token
         try {
           const response = await authAPI.getMe();
           if (response.user) {
             set({
               user: response.user,
-              token: tokenData.token,
-              refreshToken: tokenData.refreshToken,
               isAuthenticated: true,
               isLoading: false,
-              rememberMe: !!localTokens,
               lastActivity: Date.now()
             });
             

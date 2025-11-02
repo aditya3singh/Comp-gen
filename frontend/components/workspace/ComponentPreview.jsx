@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Maximize2, Smartphone, Tablet, Monitor, Edit } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { 
+  RefreshCw, Maximize2, Smartphone, Tablet, Monitor, Edit, 
+  Download, Copy, Package, FileCode, Eye, Settings,
+  Import, ExternalLink, Code2, Palette
+} from 'lucide-react';
 import PropertyEditor from './PropertyEditor';
+import ImportManager from './ImportManager';
 
 export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
   const [previewMode, setPreviewMode] = useState('desktop');
@@ -12,7 +17,12 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
   const [propertyEditorPosition, setPropertyEditorPosition] = useState({ x: 0, y: 0 });
   const [showPropertyEditor, setShowPropertyEditor] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showImportManager, setShowImportManager] = useState(false);
+  const [activePanel, setActivePanel] = useState('preview'); // 'preview', 'imports', 'settings'
+  const [imports, setImports] = useState([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef(null);
+  const refreshTimeoutRef = useRef(null);
 
   const previewSizes = {
     desktop: { width: '100%', height: '100%' },
@@ -20,28 +30,119 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
     mobile: { width: '375px', height: '667px' }
   };
 
-  const generatePreviewHTML = (jsxCode, cssCode) => {
+  // Memoize HTML generation for better performance
+  const generatePreviewHTML = useCallback((jsxCode, cssCode) => {
     // Clean and prepare JSX for preview
     let cleanJSX = jsxCode || '';
     
-    // Remove imports and exports
+    // Extract and store imports for the import manager
+    const importMatches = cleanJSX.match(/import\s+.*?from\s+['"].*?['"];?\s*/g) || [];
+    const extractedImports = importMatches.map(imp => {
+      const match = imp.match(/import\s+(.*?)\s+from\s+['"](.+?)['"];?/);
+      return match ? { statement: imp.trim(), module: match[2], imports: match[1] } : null;
+    }).filter(Boolean);
+    
+    // Update imports state if different
+    if (JSON.stringify(extractedImports) !== JSON.stringify(imports)) {
+      setImports(extractedImports);
+    }
+    
+    // Remove imports and exports for preview
     cleanJSX = cleanJSX
       .replace(/import\s+.*?from\s+['"].*?['"];?\s*/g, '')
       .replace(/export\s+(default\s+)?/g, '');
 
-    // If no JSX provided, show placeholder
+    // If no JSX provided, show modern placeholder
     if (!cleanJSX.trim()) {
       cleanJSX = `function Component() {
         return React.createElement("div", {
           style: {
-            padding: "40px",
+            padding: "60px 40px",
             textAlign: "center",
-            color: "#6b7280",
-            background: "#f9fafb",
-            borderRadius: "12px",
-            border: "2px dashed #d1d5db"
+            color: "#1f2937",
+            background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
+            borderRadius: "16px",
+            border: "2px solid #e5e7eb",
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            minHeight: "300px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
           }
-        }, "No component generated yet. Start by describing what you want to create!");
+        }, [
+          React.createElement("div", {
+            style: {
+              width: "64px",
+              height: "64px",
+              background: "#dc2626",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "24px",
+              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)"
+            }
+          }, React.createElement("span", {
+            style: { fontSize: "24px", color: "white" }
+          }, "⚡")),
+          React.createElement("h2", {
+            style: {
+              margin: "0 0 16px 0",
+              fontSize: "24px",
+              fontWeight: "600",
+              color: "#111827"
+            }
+          }, "AI Component Generator"),
+          React.createElement("p", {
+            style: {
+              margin: "0 0 32px 0",
+              color: "#6b7280",
+              fontSize: "16px",
+              lineHeight: "1.5",
+              maxWidth: "400px"
+            }
+          }, "Start creating amazing React components by describing what you want in the chat panel."),
+          React.createElement("div", {
+            style: {
+              display: "flex",
+              gap: "12px",
+              flexWrap: "wrap",
+              justifyContent: "center"
+            }
+          }, [
+            React.createElement("button", {
+              key: "start",
+              style: {
+                background: "#dc2626",
+                color: "white",
+                border: "none",
+                padding: "12px 24px",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: "0 2px 4px rgba(220, 38, 38, 0.2)"
+              }
+            }, "Start Creating"),
+            React.createElement("button", {
+              key: "examples",
+              style: {
+                background: "white",
+                color: "#374151",
+                border: "2px solid #e5e7eb",
+                padding: "12px 24px",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }
+            }, "View Examples")
+          ])
+        ]);
       }`;
     }
 
@@ -52,16 +153,22 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Component Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             margin: 0;
             padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: #f9fafb;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #ffffff;
             min-height: 100vh;
+            color: #1f2937;
+            line-height: 1.6;
         }
         #root {
             display: flex;
@@ -71,14 +178,54 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
         }
         .error {
             color: #dc2626;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 8px;
-            padding: 16px;
+            background: #ffffff;
+            border: 2px solid #dc2626;
+            border-radius: 12px;
+            padding: 24px;
             margin: 20px;
             max-width: 500px;
+            font-family: 'Inter', sans-serif;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
         }
+        .error h3 {
+            margin: 0 0 12px 0;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        .error p {
+            margin: 0 0 16px 0;
+            font-size: 14px;
+        }
+        .error details {
+            font-size: 12px;
+        }
+        .error summary {
+            cursor: pointer;
+            font-weight: 500;
+            padding: 8px 0;
+        }
+        .error pre {
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            overflow: auto;
+            border: 1px solid #e5e7eb;
+            margin-top: 8px;
+        }
+        
+        /* Custom component styles */
         ${cssCode || ''}
+        
+        /* Performance optimizations */
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Smooth animations */
+        * {
+            transition: all 0.2s ease;
+        }
     </style>
 </head>
 <body>
@@ -88,42 +235,126 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
             // Component code
             ${cleanJSX}
             
-            // Find the component function
+            // Enhanced component detection
             let ComponentToRender;
             
-            // Try to find any defined function component
-            if (typeof Component !== 'undefined') {
-                ComponentToRender = Component;
-            } else if (typeof Button !== 'undefined') {
-                ComponentToRender = Button;
-            } else if (typeof Card !== 'undefined') {
-                ComponentToRender = Card;
-            } else if (typeof LoginForm !== 'undefined') {
-                ComponentToRender = LoginForm;
-            } else if (typeof Navigation !== 'undefined') {
-                ComponentToRender = Navigation;
-            } else if (typeof TestComponent !== 'undefined') {
-                ComponentToRender = TestComponent;
-            } else {
-                // Create a fallback component
+            // Try to find any defined function component with better detection
+            const possibleComponents = [
+                'Component', 'Button', 'Card', 'LoginForm', 'Navigation', 
+                'TestComponent', 'App', 'Main', 'Layout', 'Header', 'Footer',
+                'Sidebar', 'Modal', 'Form', 'Input', 'Select', 'Checkbox'
+            ];
+            
+            for (const name of possibleComponents) {
+                if (typeof window[name] !== 'undefined' && typeof window[name] === 'function') {
+                    ComponentToRender = window[name];
+                    break;
+                }
+            }
+            
+            // If no component found, create enhanced fallback
+            if (!ComponentToRender) {
                 ComponentToRender = function FallbackComponent() {
                     return React.createElement("div", {
                         style: {
-                            padding: "40px",
+                            padding: "48px",
                             textAlign: "center",
-                            color: "#ef4444",
-                            background: "#fef2f2",
-                            borderRadius: "12px",
-                            border: "1px solid #fecaca",
-                            fontFamily: "Arial, sans-serif"
+                            color: "#dc2626",
+                            background: "#ffffff",
+                            borderRadius: "16px",
+                            border: "2px solid #dc2626",
+                            fontFamily: "'Inter', sans-serif",
+                            maxWidth: "500px",
+                            margin: "0 auto",
+                            boxShadow: "0 4px 12px rgba(220, 38, 38, 0.1)"
                         }
-                    }, "Component could not be rendered. Please try generating a new component.");
+                    }, [
+                        React.createElement("div", {
+                            key: "icon",
+                            style: {
+                                width: "48px",
+                                height: "48px",
+                                background: "#dc2626",
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                margin: "0 auto 20px",
+                                color: "white",
+                                fontSize: "20px"
+                            }
+                        }, "⚠"),
+                        React.createElement("h3", {
+                            key: "title",
+                            style: {
+                                margin: "0 0 12px 0",
+                                fontSize: "18px",
+                                fontWeight: "600"
+                            }
+                        }, "Component Render Error"),
+                        React.createElement("p", {
+                            key: "message",
+                            style: {
+                                margin: "0 0 20px 0",
+                                fontSize: "14px",
+                                color: "#6b7280",
+                                lineHeight: "1.5"
+                            }
+                        }, "The component could not be rendered. Please check your code and try generating a new component."),
+                        React.createElement("button", {
+                            key: "retry",
+                            style: {
+                                background: "#dc2626",
+                                color: "white",
+                                border: "none",
+                                padding: "10px 20px",
+                                borderRadius: "6px",
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                cursor: "pointer"
+                            },
+                            onClick: () => window.location.reload()
+                        }, "Retry")
+                    ]);
                 };
             }
             
-            // Render the component
+            // Render with error boundary
+            const ErrorBoundary = class extends React.Component {
+                constructor(props) {
+                    super(props);
+                    this.state = { hasError: false, error: null };
+                }
+                
+                static getDerivedStateFromError(error) {
+                    return { hasError: true, error };
+                }
+                
+                render() {
+                    if (this.state.hasError) {
+                        return React.createElement("div", {
+                            className: "error"
+                        }, [
+                            React.createElement("h3", { key: "title" }, "Component Error"),
+                            React.createElement("p", { key: "message" }, this.state.error?.message || "An error occurred"),
+                            React.createElement("details", { key: "details" }, [
+                                React.createElement("summary", { key: "summary" }, "Show Details"),
+                                React.createElement("pre", { key: "stack" }, this.state.error?.stack || "No stack trace available")
+                            ])
+                        ]);
+                    }
+                    
+                    return this.props.children;
+                }
+            };
+            
+            // Render the component with error boundary
             const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(React.createElement(ComponentToRender));
+            root.render(
+                React.createElement(ErrorBoundary, null,
+                    React.createElement(ComponentToRender)
+                )
+            );
             
         } catch (error) {
             console.error('Preview error:', error);
@@ -131,9 +362,9 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
                 <div class="error">
                     <h3>Preview Error</h3>
                     <p>\${error.message}</p>
-                    <details style="margin-top: 10px;">
-                        <summary style="cursor: pointer;">Show Details</summary>
-                        <pre style="margin-top: 10px; font-size: 12px; overflow: auto;">\${error.stack}</pre>
+                    <details>
+                        <summary>Show Details</summary>
+                        <pre>\${error.stack}</pre>
                     </details>
                 </div>
             \`;
@@ -143,31 +374,37 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
 </html>`;
   };
 
-  const refreshPreview = () => {
-    setIsRefreshing(true);
-    setError(null);
+  // Optimized refresh with debouncing
+  const refreshPreview = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
     
-    if (iframeRef.current) {
-      try {
-        const html = generatePreviewHTML(jsx, css);
-        console.log('Generated HTML:', html); // Debug log
-        
-        // Write HTML directly to iframe
-        const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
-        iframeDoc.open();
-        iframeDoc.write(html);
-        iframeDoc.close();
-        
-        setIsRefreshing(false);
-      } catch (error) {
-        console.error('Preview generation error:', error);
-        setError('Failed to generate preview');
+    refreshTimeoutRef.current = setTimeout(() => {
+      setIsRefreshing(true);
+      setError(null);
+      
+      if (iframeRef.current) {
+        try {
+          const html = generatePreviewHTML(jsx, css);
+          
+          // Write HTML directly to iframe with better error handling
+          const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
+          iframeDoc.open();
+          iframeDoc.write(html);
+          iframeDoc.close();
+          
+          setIsRefreshing(false);
+        } catch (error) {
+          console.error('Preview generation error:', error);
+          setError('Failed to generate preview');
+          setIsRefreshing(false);
+        }
+      } else {
         setIsRefreshing(false);
       }
-    } else {
-      setIsRefreshing(false);
-    }
-  };
+    }, 150); // Debounce for 150ms
+  }, [jsx, css, generatePreviewHTML]);
 
   useEffect(() => {
     console.log('🔄 ComponentPreview useEffect triggered with:', { 
@@ -319,165 +556,310 @@ export default function ComponentPreview({ jsx, css, onCodeUpdate }) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Preview Controls */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h3 className="font-medium text-gray-900">Component Preview</h3>
-          
-          {/* Device Size Controls */}
-          <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setPreviewMode('desktop')}
-              className={`p-2 rounded-md ${
-                previewMode === 'desktop'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Desktop View"
-            >
-              <Monitor className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setPreviewMode('tablet')}
-              className={`p-2 rounded-md ${
-                previewMode === 'tablet'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Tablet View"
-            >
-              <Tablet className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setPreviewMode('mobile')}
-              className={`p-2 rounded-md ${
-                previewMode === 'mobile'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Mobile View"
-            >
-              <Smartphone className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`flex items-center px-3 py-2 text-sm rounded-md ${
-              isEditMode 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            {isEditMode ? 'Exit Edit' : 'Edit Mode'}
-          </button>
-          
-          <button
-            onClick={refreshPreview}
-            disabled={isRefreshing}
-            className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Preview Area */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-auto relative">
-        {error ? (
-          <div className="text-center">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-              <h3 className="text-lg font-medium text-red-900 mb-2">Preview Error</h3>
-              <p className="text-red-700">{error}</p>
+    <div className={`h-full flex flex-col transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : 'bg-white'}`}>
+      {/* Enhanced Header with Tabs */}
+      <div className="bg-white border-b-2 border-black">
+        {/* Main Header */}
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+                <Eye className="h-4 w-4 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-black">Component Preview</h3>
+            </div>
+            
+            {/* Tab Navigation */}
+            <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={refreshPreview}
-                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                onClick={() => setActivePanel('preview')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activePanel === 'preview'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-black hover:bg-white'
+                }`}
               >
-                Try Again
+                <Eye className="h-4 w-4 mr-2 inline" />
+                Preview
+              </button>
+              <button
+                onClick={() => setActivePanel('imports')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activePanel === 'imports'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-black hover:bg-white'
+                }`}
+              >
+                <Package className="h-4 w-4 mr-2 inline" />
+                Imports ({imports.length})
+              </button>
+              <button
+                onClick={() => setActivePanel('settings')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activePanel === 'settings'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-black hover:bg-white'
+                }`}
+              >
+                <Settings className="h-4 w-4 mr-2 inline" />
+                Settings
               </button>
             </div>
           </div>
-        ) : (
-          <div
-            className={`bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 relative ${
-              isEditMode ? 'ring-2 ring-blue-500' : ''
-            }`}
-            style={{
-              width: previewSizes[previewMode].width,
-              height: previewSizes[previewMode].height,
-              maxWidth: '100%',
-              maxHeight: '100%'
-            }}
-          >
-            <iframe
-              ref={iframeRef}
-              className="w-full h-full border-0"
-              title="Component Preview"
-              sandbox="allow-scripts allow-same-origin"
-              onError={handleIframeError}
-              onLoad={() => {
-                if (isEditMode && iframeRef.current) {
-                  setupElementSelection();
-                }
-              }}
-              style={{
-                opacity: isRefreshing ? 0.5 : 1,
-                transition: 'opacity 0.3s ease',
-                pointerEvents: isEditMode ? 'auto' : 'auto'
-              }}
-            />
+
+          <div className="flex items-center space-x-2">
+            {/* Device Size Controls */}
+            {activePanel === 'preview' && (
+              <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1 mr-4">
+                <button
+                  onClick={() => setPreviewMode('desktop')}
+                  className={`p-2 rounded-md transition-all ${
+                    previewMode === 'desktop'
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-black hover:bg-white'
+                  }`}
+                  title="Desktop View"
+                >
+                  <Monitor className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setPreviewMode('tablet')}
+                  className={`p-2 rounded-md transition-all ${
+                    previewMode === 'tablet'
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-black hover:bg-white'
+                  }`}
+                  title="Tablet View"
+                >
+                  <Tablet className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setPreviewMode('mobile')}
+                  className={`p-2 rounded-md transition-all ${
+                    previewMode === 'mobile'
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-black hover:bg-white'
+                  }`}
+                  title="Mobile View"
+                >
+                  <Smartphone className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             
-            {isRefreshing && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <RefreshCw className="h-5 w-5 animate-spin" />
-                  <span>Refreshing preview...</span>
+            {/* Action Buttons */}
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-md transition-all"
+              title="Toggle Fullscreen"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </button>
+            
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`flex items-center px-3 py-2 text-sm rounded-md font-medium transition-all ${
+                isEditMode 
+                  ? 'bg-red-600 text-white shadow-sm' 
+                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
+              }`}
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              {isEditMode ? 'Exit Edit' : 'Edit Mode'}
+            </button>
+            
+            <button
+              onClick={refreshPreview}
+              disabled={isRefreshing}
+              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-black hover:bg-gray-100 disabled:opacity-50 rounded-md font-medium transition-all"
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden">
+        {activePanel === 'preview' && (
+          <div className="h-full flex flex-col">
+            {/* Preview Area */}
+            <div className="flex-1 flex items-center justify-center p-6 overflow-auto relative bg-gray-50">
+              {error ? (
+                <div className="text-center max-w-md">
+                  <div className="bg-white border-2 border-red-600 rounded-xl p-8 shadow-lg">
+                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-white text-2xl">⚠</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-black mb-3">Preview Error</h3>
+                    <p className="text-gray-600 mb-6">{error}</p>
+                    <button
+                      onClick={refreshPreview}
+                      className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-all"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`bg-white rounded-xl shadow-xl overflow-hidden transition-all duration-300 relative ${
+                    isEditMode ? 'ring-4 ring-red-500 ring-opacity-50' : ''
+                  }`}
+                  style={{
+                    width: previewSizes[previewMode].width,
+                    height: previewSizes[previewMode].height,
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    minHeight: '400px'
+                  }}
+                >
+                  <iframe
+                    ref={iframeRef}
+                    className="w-full h-full border-0 rounded-xl"
+                    title="Component Preview"
+                    sandbox="allow-scripts allow-same-origin"
+                    onError={handleIframeError}
+                    onLoad={() => {
+                      if (isEditMode && iframeRef.current) {
+                        setupElementSelection();
+                      }
+                    }}
+                    style={{
+                      opacity: isRefreshing ? 0.5 : 1,
+                      transition: 'opacity 0.3s ease'
+                    }}
+                  />
+                  
+                  {isRefreshing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 rounded-xl">
+                      <div className="flex flex-col items-center space-y-3 text-gray-600">
+                        <RefreshCw className="h-8 w-8 animate-spin text-red-600" />
+                        <span className="font-medium">Refreshing preview...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {isEditMode && (
+                    <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg">
+                      🎯 Edit Mode: Click elements to modify
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Property Editor */}
+              {showPropertyEditor && selectedElement && (
+                <PropertyEditor
+                  selectedElement={selectedElement}
+                  position={propertyEditorPosition}
+                  onClose={() => {
+                    setShowPropertyEditor(false);
+                    setSelectedElement(null);
+                  }}
+                  onPropertyChange={handlePropertyChange}
+                />
+              )}
+            </div>
+
+            {/* Preview Status Bar */}
+            <div className="bg-white border-t-2 border-black px-6 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center space-x-4">
+                  <span className="font-medium text-black">
+                    {previewMode.charAt(0).toUpperCase() + previewMode.slice(1)} Preview
+                  </span>
+                  {previewMode !== 'desktop' && (
+                    <span className="text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      {previewSizes[previewMode].width} × {previewSizes[previewMode].height}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-4">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    jsx ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {jsx ? '✓ Component loaded' : '○ No component'}
+                  </span>
+                  {jsx && (
+                    <span className="text-gray-600 text-xs">
+                      {jsx.split('\n').length} lines
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
-
-            {isEditMode && (
-              <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                Edit Mode: Click elements to modify
-              </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Property Editor */}
-        {showPropertyEditor && selectedElement && (
-          <PropertyEditor
-            selectedElement={selectedElement}
-            position={propertyEditorPosition}
-            onClose={() => {
-              setShowPropertyEditor(false);
-              setSelectedElement(null);
-            }}
-            onPropertyChange={handlePropertyChange}
+        {activePanel === 'imports' && (
+          <ImportManager 
+            imports={imports}
+            onImportsChange={setImports}
+            jsx={jsx}
+            onCodeUpdate={onCodeUpdate}
           />
         )}
-      </div>
 
-      {/* Preview Info */}
-      <div className="bg-white border-t px-4 py-2">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>
-            {previewMode.charAt(0).toUpperCase() + previewMode.slice(1)} Preview
-            {previewMode !== 'desktop' && (
-              <span className="ml-2">
-                {previewSizes[previewMode].width} × {previewSizes[previewMode].height}
-              </span>
-            )}
-          </span>
-          <span>
-            {jsx ? 'Component loaded' : 'No component'}
-          </span>
-        </div>
+        {activePanel === 'settings' && (
+          <div className="h-full p-6 bg-gray-50">
+            <div className="max-w-2xl mx-auto">
+              <h3 className="text-lg font-bold text-black mb-6">Preview Settings</h3>
+              
+              <div className="space-y-6">
+                {/* Performance Settings */}
+                <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
+                  <h4 className="font-semibold text-black mb-4 flex items-center">
+                    <Settings className="h-5 w-5 mr-2 text-red-600" />
+                    Performance
+                  </h4>
+                  <div className="space-y-4">
+                    <label className="flex items-center justify-between">
+                      <span className="text-gray-700">Auto-refresh on code changes</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-gray-700">Enable hot reload</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-gray-700">Debounce refresh (ms)</span>
+                      <input type="number" defaultValue="150" className="w-20 px-2 py-1 border rounded" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Display Settings */}
+                <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
+                  <h4 className="font-semibold text-black mb-4 flex items-center">
+                    <Palette className="h-5 w-5 mr-2 text-red-600" />
+                    Display
+                  </h4>
+                  <div className="space-y-4">
+                    <label className="flex items-center justify-between">
+                      <span className="text-gray-700">Show grid overlay</span>
+                      <input type="checkbox" className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-gray-700">Show rulers</span>
+                      <input type="checkbox" className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-gray-700">Background color</span>
+                      <select className="px-2 py-1 border rounded">
+                        <option>White</option>
+                        <option>Light Gray</option>
+                        <option>Dark Gray</option>
+                        <option>Transparent</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

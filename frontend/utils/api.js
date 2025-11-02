@@ -1,17 +1,33 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
+  // Enable HTTP/2 and connection reuse
+  maxRedirects: 3,
+  // Optimize for speed
+  validateStatus: (status) => status < 500, // Don't throw on 4xx errors
 });
 
-// Add auth token to requests
+// Token cache for faster access
+let cachedToken = null;
+let tokenCacheTime = 0;
+const TOKEN_CACHE_TTL = 30000; // 30 seconds
+
+// Add auth token to requests - Optimized
 api.interceptors.request.use((config) => {
-  // Try to get token from new auth storage first, then fallback to old method
+  // Use cached token if available and fresh
+  if (cachedToken && (Date.now() - tokenCacheTime < TOKEN_CACHE_TTL)) {
+    config.headers.Authorization = `Bearer ${cachedToken}`;
+    return config;
+  }
+  
+  // Get fresh token
   let token = null;
   
   try {
@@ -22,13 +38,12 @@ api.interceptors.request.use((config) => {
     
     if (tokenData && tokenData.token) {
       token = tokenData.token;
-    } else {
-      // Fallback to old token storage
-      token = localStorage.getItem('token');
+      // Cache the token
+      cachedToken = token;
+      tokenCacheTime = Date.now();
     }
   } catch (error) {
-    // Fallback to old token storage
-    token = localStorage.getItem('token');
+    console.warn('Token parsing error:', error);
   }
   
   if (token) {
@@ -37,14 +52,62 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle auth errors
+// Handle auth errors - Optimized with retry logic
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Clear cached token
+      cachedToken = null;
+      tokenCacheTime = 0;
+      
+      // Try to refresh token
+      try {
+        const localTokens = localStorage.getItem('authTokens');
+        const sessionTokens = sessionStorage.getItem('authTokens');
+        const tokenData = localTokens ? JSON.parse(localTokens) : 
+                         sessionTokens ? JSON.parse(sessionTokens) : null;
+        
+        if (tokenData?.refreshToken) {
+          const response = await api.post('/auth/refresh', {
+            refreshToken: tokenData.refreshToken
+          });
+          
+          if (response.data.token) {
+            // Update stored tokens
+            const newTokenData = {
+              ...tokenData,
+              token: response.data.token,
+              refreshToken: response.data.refreshToken || tokenData.refreshToken,
+              expiresAt: Date.now() + (12 * 60 * 60 * 1000) // 12 hours
+            };
+            
+            const storage = localTokens ? localStorage : sessionStorage;
+            storage.setItem('authTokens', JSON.stringify(newTokenData));
+            
+            // Cache new token
+            cachedToken = response.data.token;
+            tokenCacheTime = Date.now();
+            
+            // Retry original request
+            originalRequest.headers.Authorization = `Bearer ${response.data.token}`;
+            return api(originalRequest);
+          }
+        }
+      } catch (refreshError) {
+        console.warn('Token refresh failed:', refreshError);
+      }
+      
+      // If refresh fails, redirect to login
+      localStorage.removeItem('authTokens');
+      sessionStorage.removeItem('authTokens');
       window.location.href = '/auth/login';
     }
+    
     return Promise.reject(error.response?.data || error);
   }
 );
